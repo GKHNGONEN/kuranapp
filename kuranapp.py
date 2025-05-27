@@ -12,6 +12,11 @@ harf_cevir = {
 def latin2arabic(kok):
     return ''.join(harf_cevir.get(h, h) for h in kok)
 
+@st.cache_data
+def load_corpus(path='corpus.txt'):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.readlines()
+
 def fiil_koklerini_bul(sure_no, corpus_lines):
     fiil_sayaci = {}
     for satir in corpus_lines:
@@ -28,23 +33,23 @@ def fiil_koklerini_bul(sure_no, corpus_lines):
             if root_kisim:
                 root = root_kisim[0].split(":")[1]
                 fiil_sayaci[root] = fiil_sayaci.get(root, 0) + 1
-    return sorted(fiil_sayaci.items(), key=lambda x: x[1])
+    # Sıklığa göre azalan sırala
+    return sorted(fiil_sayaci.items(), key=lambda x: x[1], reverse=True)
 
-# Streamlit Arayüzü
 st.title("Sûredeki Fiil Köklerini Bul")
 
-uploaded_file = st.file_uploader("Lütfen 'corpus.txt' dosyasını yükleyin", type="txt")
+corpus = load_corpus()
 
-sure_no = st.text_input("Kaçıncı sûredeki fiil köklerini görmek istiyorsunuz?", value="56")
+sure_no = st.text_input("Kaçıncı sûredeki fiil köklerini görmek istiyorsunuz?", "56")
 
-if uploaded_file and sure_no.strip().isdigit():
-    corpus_lines = uploaded_file.read().decode("utf-8").splitlines()
-    fiiller = fiil_koklerini_bul(sure_no.strip(), corpus_lines)
-    
+if sure_no.strip().isdigit():
+    fiiller = fiil_koklerini_bul(sure_no.strip(), corpus)
     if fiiller:
-        st.markdown(f"### {sure_no}. sûre içindeki fiil kökleri (sıklık artan sırayla):")
+        st.markdown(f"### {sure_no}. sûredeki fiil kökleri (kullanım sıklığına göre en çoktan aza):")
         for fiil, sayi in fiiller:
             arapca = latin2arabic(fiil)
             st.write(f"{arapca} : {sayi}")
     else:
         st.warning(f"{sure_no}. sûre içinde fiil kökü bulunamadı.")
+else:
+    st.warning("Lütfen geçerli bir sûre numarası giriniz.")
