@@ -3,7 +3,7 @@ import re
 import requests
 
 # GitHub ham linkler (bunları kendi repo adresine göre düzenlemelisin)
-GITHUB_RAW_BASE_URL = "https://raw.githubusercontent.com/kullaniciadi/reposu/main/"
+GITHUB_RAW_BASE_URL = "https://raw.githubusercontent.com/GKHNGONEN/kuranapp/main/"
 CORPUS_URL = GITHUB_RAW_BASE_URL + "cospus.txt"
 KURAN_URL = GITHUB_RAW_BASE_URL + "kuran-arapca.txt"
 
