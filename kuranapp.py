@@ -39,30 +39,44 @@ st.title("Kur'an Fiil ve Ebced Aracı")
 secim = st.sidebar.selectbox("İşlem Seç", ["Sürelerde Fiil Sayısı", "Ebced Değerine Göre Ayet Bul"])
 
 if secim == "Sürelerde Fiil Sayısı":
-    st.header("Seçilen Sûrede Kaç Farklı Fiil Kökü Var?")
+    st.header("Sürelerde Kaç Farklı Fiil Kökü Var?")
 
-    # Sûre numarası giriş kutusu
-    sure_no_input = st.text_input("Sûre numarasını giriniz (örnek: 1):")
+    try:
+        yanit = requests.get(CORPUS_URL)
+        yanit.raise_for_status()
+        icerik = yanit.text
+        sure_kokleri = {}
 
-    if sure_no_input:
-        try:
-            yanit = requests.get(CORPUS_URL)
-            yanit.raise_for_status()
-            icerik = yanit.text
-            fiil_kokleri = set()
-            for satir in icerik.strip().split("\n"):
-                try:
-                    kok, tur, konum = satir.strip().split()
-                    if tur != 'verb':
-                        continue
-                    sure_no = konum.split(':')[0]
-                    if sure_no == sure_no_input:
-                        fiil_kokleri.add(kok)
-                except:
+        for satir in icerik.strip().split("\n"):
+            try:
+                kok, tur, konum = satir.strip().split()
+                if tur != 'verb':
                     continue
-            st.write(f"### Sure {sure_no_input} içinde {len(fiil_kokleri)} farklı fiil kökü var.")
-        except Exception as e:
-            st.error(f"Dosya alınamadı: {e}")
+                sure_no = konum.split(':')[0].lstrip("0")  # baştaki sıfırları sil
+                if sure_no not in sure_kokleri:
+                    sure_kokleri[sure_no] = set()
+                sure_kokleri[sure_no].add(kok)
+            except:
+                continue
+
+        secenek = st.radio("Ne yapmak istiyorsun?", ["Tüm sûreleri listele", "Bir sûre numarası gir"])
+
+        if secenek == "Tüm sûreleri listele":
+            st.write("### Fiil kökü sayısı (süre bazında):")
+            for sure, kokler in sorted(sure_kokleri.items(), key=lambda x: int(x[0])):
+                st.write(f"Sure {sure}: {len(kokler)} fiil kökü")
+
+        elif secenek == "Bir sûre numarası gir":
+            sure_input = st.text_input("Sûre numarasını gir (örn: 56)")
+            if sure_input:
+                sure_input = sure_input.strip().lstrip("0")
+                if sure_input in sure_kokleri:
+                    st.success(f"Sure {sure_input} içinde {len(sure_kokleri[sure_input])} farklı fiil kökü var.")
+                    st.write("Kökler:", ', '.join(sorted(sure_kokleri[sure_input])))
+                else:
+                    st.warning(f"Sure {sure_input} içinde hiç fiil kökü bulunamadı.")
+    except Exception as e:
+        st.error(f"Dosya alınamadı: {e}")
 
 elif secim == "Ebced Değerine Göre Ayet Bul":
     st.header("Ebced Değerine Göre Ayet Bul")
