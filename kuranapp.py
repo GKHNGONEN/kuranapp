@@ -1,5 +1,11 @@
 import streamlit as st
 import re
+import requests
+
+# GitHub ham linkler (bunları kendi repo adresine göre düzenlemelisin)
+GITHUB_RAW_BASE_URL = "https://raw.githubusercontent.com/kullaniciadi/reposu/main/"
+CORPUS_URL = GITHUB_RAW_BASE_URL + "cospus.txt"
+KURAN_URL = GITHUB_RAW_BASE_URL + "kuran-arapca.txt"
 
 # Ebced değerleri
 ebced_degerleri = {
@@ -34,9 +40,11 @@ secim = st.sidebar.selectbox("İşlem Seç", ["Sürelerde Fiil Sayısı", "Ebced
 
 if secim == "Sürelerde Fiil Sayısı":
     st.header("Sürelerde Kaç Farklı Fiil Kökü Var?")
-    corpus_dosyasi = st.file_uploader("corpus.txt dosyasını yükleyin", type=["txt"])
-    if corpus_dosyasi:
-        icerik = corpus_dosyasi.read().decode('utf-8')
+
+    try:
+        yanit = requests.get(CORPUS_URL)
+        yanit.raise_for_status()
+        icerik = yanit.text
         sure_kokleri = {}
         for satir in icerik.strip().split("\n"):
             try:
@@ -52,43 +60,49 @@ if secim == "Sürelerde Fiil Sayısı":
         st.write("### Fiil kökü sayısı (süre bazında):")
         for sure, kokler in sorted(sure_kokleri.items(), key=lambda x: int(x[0])):
             st.write(f"Sure {sure}: {len(kokler)} fiil kökü")
+    except Exception as e:
+        st.error(f"Dosya alınamadı: {e}")
 
 elif secim == "Ebced Değerine Göre Ayet Bul":
     st.header("Ebced Değerine Göre Ayet Bul")
-    ebced_dosyasi = st.file_uploader("kuran-arapca.txt dosyasını yükleyin", type=["txt"])
     hedef_deger = st.number_input("Hedef Ebced Değeri:", min_value=1, step=1)
 
-    if ebced_dosyasi and hedef_deger:
-        satirlar = ebced_dosyasi.read().decode('utf-8').splitlines()
-        duzgun_satirlar = []
-        gecici = ''
-        for satir in satirlar:
-            satir = satir.strip()
-            if not satir:
-                continue
-            if '|' in satir:
-                if gecici:
-                    duzgun_satirlar.append(gecici)
-                gecici = satir
+    if hedef_deger:
+        try:
+            yanit = requests.get(KURAN_URL)
+            yanit.raise_for_status()
+            satirlar = yanit.text.strip().splitlines()
+            duzgun_satirlar = []
+            gecici = ''
+            for satir in satirlar:
+                satir = satir.strip()
+                if not satir:
+                    continue
+                if '|' in satir:
+                    if gecici:
+                        duzgun_satirlar.append(gecici)
+                    gecici = satir
+                else:
+                    gecici += ' ' + satir
+            if gecici:
+                duzgun_satirlar.append(gecici)
+
+            eslesenler = []
+            for satir in duzgun_satirlar:
+                try:
+                    sure, ayet, metin = satir.split('|', 2)
+                    temiz = ayet_temizle(metin)
+                    ebced = ebced_hesapla(temiz)
+                    if ebced == hedef_deger:
+                        eslesenler.append((sure, ayet, metin))
+                except:
+                    continue
+
+            if eslesenler:
+                st.write(f"### Ebced {hedef_deger} olan ayetler:")
+                for sure, ayet, metin in eslesenler:
+                    st.write(f"**{sure}:{ayet}** → {metin}")
             else:
-                gecici += ' ' + satir
-        if gecici:
-            duzgun_satirlar.append(gecici)
-
-        eslesenler = []
-        for satir in duzgun_satirlar:
-            try:
-                sure, ayet, metin = satir.split('|', 2)
-                temiz = ayet_temizle(metin)
-                ebced = ebced_hesapla(temiz)
-                if ebced == hedef_deger:
-                    eslesenler.append((sure, ayet, metin))
-            except:
-                continue
-
-        if eslesenler:
-            st.write(f"### Ebced {hedef_deger} olan ayetler:")
-            for sure, ayet, metin in eslesenler:
-                st.write(f"**{sure}:{ayet}** → {metin}")
-        else:
-            st.warning("Bu değerde ayet bulunamadı.")
+                st.warning("Bu değerde ayet bulunamadı.")
+        except Exception as e:
+            st.error(f"Dosya alınamadı: {e}")
