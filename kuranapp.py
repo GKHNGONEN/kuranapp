@@ -2,7 +2,7 @@ import streamlit as st
 import re
 import requests
 
-# GitHub ham linkler (bunları kendi repo adresine göre düzenlemelisin)
+# GitHub ham linkler
 GITHUB_RAW_BASE_URL = "https://raw.githubusercontent.com/GKHNGONEN/kuranapp/main/"
 CORPUS_URL = GITHUB_RAW_BASE_URL + "corpus.txt"
 KURAN_URL = GITHUB_RAW_BASE_URL + "kuran-arapca.txt"
@@ -39,29 +39,30 @@ st.title("Kur'an Fiil ve Ebced Aracı")
 secim = st.sidebar.selectbox("İşlem Seç", ["Sürelerde Fiil Sayısı", "Ebced Değerine Göre Ayet Bul"])
 
 if secim == "Sürelerde Fiil Sayısı":
-    st.header("Sürelerde Kaç Farklı Fiil Kökü Var?")
+    st.header("Seçilen Sûrede Kaç Farklı Fiil Kökü Var?")
 
-    try:
-        yanit = requests.get(CORPUS_URL)
-        yanit.raise_for_status()
-        icerik = yanit.text
-        sure_kokleri = {}
-        for satir in icerik.strip().split("\n"):
-            try:
-                kok, tur, konum = satir.strip().split()
-                if tur != 'verb':
+    # Sûre numarası giriş kutusu
+    sure_no_input = st.text_input("Sûre numarasını giriniz (örnek: 1):")
+
+    if sure_no_input:
+        try:
+            yanit = requests.get(CORPUS_URL)
+            yanit.raise_for_status()
+            icerik = yanit.text
+            fiil_kokleri = set()
+            for satir in icerik.strip().split("\n"):
+                try:
+                    kok, tur, konum = satir.strip().split()
+                    if tur != 'verb':
+                        continue
+                    sure_no = konum.split(':')[0]
+                    if sure_no == sure_no_input:
+                        fiil_kokleri.add(kok)
+                except:
                     continue
-                sure_no = konum.split(':')[0]
-                if sure_no not in sure_kokleri:
-                    sure_kokleri[sure_no] = set()
-                sure_kokleri[sure_no].add(kok)
-            except:
-                continue
-        st.write("### Fiil kökü sayısı (süre bazında):")
-        for sure, kokler in sorted(sure_kokleri.items(), key=lambda x: int(x[0])):
-            st.write(f"Sure {sure}: {len(kokler)} fiil kökü")
-    except Exception as e:
-        st.error(f"Dosya alınamadı: {e}")
+            st.write(f"### Sure {sure_no_input} içinde {len(fiil_kokleri)} farklı fiil kökü var.")
+        except Exception as e:
+            st.error(f"Dosya alınamadı: {e}")
 
 elif secim == "Ebced Değerine Göre Ayet Bul":
     st.header("Ebced Değerine Göre Ayet Bul")
